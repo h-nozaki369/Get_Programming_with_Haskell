@@ -1,0 +1,1 @@
+succ maxBound :: Int will cause runtime error while inc maxBound does not cause any error. It will cause an overflow and result in minBound.
