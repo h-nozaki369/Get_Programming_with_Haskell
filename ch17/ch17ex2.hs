@@ -1,5 +1,5 @@
-data Events = Events [String]
-data Probs = Probs [Double]
+data Events = Events [String] deriving (Show, Eq)
+data Probs = Probs [Double] deriving (Show, Eq)
 data PTable = PTable Events Probs
 
 createTable :: Events -> Probs -> PTable
@@ -15,11 +15,11 @@ instance Show PTable where
         where pairs = zipWith showPair events probs
 
 instance Semigroup Events where
-    e1 <> e2 = cartCombine combinar e1 e2
+    Events e1 <> Events e2 = Events $ cartCombine combinar e1 e2
         where combinar = (\x y -> mconcat [x,"-",y])
 
 instance Semigroup Probs where
-    p1 <> p2 = cartCombine (*) p1 p2
+    Probs p1 <> Probs p2 = Probs $ cartCombine (*) p1 p2
 
 cartCombine :: (a -> b -> c) -> [a] -> [b] -> [c]
 cartCombine func l1 l2 = zipWith func newL1 cycledL2
@@ -27,3 +27,22 @@ cartCombine func l1 l2 = zipWith func newL1 cycledL2
           repeatedL1 = map (take nToAdd . repeat) l1
           newL1 = mconcat repeatedL1
           cycledL2 = cycle l2
+
+instance Monoid Events where
+    mempty = Events []
+    mappend = (<>)
+
+instance Monoid Probs where
+    mempty = Probs []
+    mappend = (<>)
+
+instance Semigroup PTable where
+    (<>) ptable1 (PTable (Events []) (Probs [])) = ptable1
+    (<>) (PTable (Events []) (Probs [])) ptable2 = ptable2
+    (<>) (PTable e1 p1) (PTable e2 p2) = createTable newEvents newProbs
+        where newEvents = e1 <> e2
+              newProbs = p1 <> p2
+
+instance Monoid PTable where
+    mempty = PTable (Events []) (Probs [])
+    mappend = (<>)
