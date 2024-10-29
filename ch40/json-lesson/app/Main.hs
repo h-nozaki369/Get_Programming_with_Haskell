@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as BC
 import GHC.Generics
+import Control.Monad
 
 data Book = Book { title :: T.Text
                  , author :: T.Text
@@ -52,5 +53,73 @@ instance ToJSON ErrorMessage where
 anErrorMessage :: ErrorMessage
 anErrorMessage = ErrorMessage "Everything is Okay" 0
 
+data NOAAResult = NOAAResult { uid :: T.Text
+                             , mindate :: T.Text
+                             , maxdate :: T.Text
+                             , name :: T.Text
+                             , datacoverage :: Double
+                             , resultId :: T.Text } deriving Show
+
+instance FromJSON NOAAResult where
+    parseJSON (Object v) = NOAAResult <$> v .: "uid"
+                                      <*> v .: "mindate"
+                                      <*> v .: "maxdate"
+                                      <*> v .: "name"
+                                      <*> v .: "datacoverage"
+                                      <*> v .: "id"
+
+-- Q40-1
+instance ToJSON NOAAResult where
+    toJSON (NOAAResult uid mindate maxdate name datacoverage resultId) =
+        object [ "uid" .= uid
+               , "mindate" .= mindate
+               , "maxdate" .= maxdate
+               , "name" .= name
+               , "datacoverage" .= datacoverage
+               , "id" .= resultId
+               ]
+
+data Resultset = Resultset { offset :: Int
+                           , count :: Int
+                           , limit :: Int } deriving (Show, Generic)
+
+instance FromJSON Resultset
+-- Q40-1
+instance ToJSON Resultset
+
+data Metadata = Metadata { resultset :: Resultset } deriving (Show, Generic)
+
+instance FromJSON Metadata
+-- Q40-1
+instance ToJSON Metadata
+
+data NOAAResponse = NOAAResponse { metadata :: Metadata
+                                 , results :: [NOAAResult]
+                                 } deriving (Show, Generic)
+
+instance FromJSON NOAAResponse
+-- Q40-1
+instance ToJSON NOAAResponse
+
+printResults :: Maybe [NOAAResult] -> IO ()
+printResults Nothing = print "error loading data"
+printResults (Just results) = do
+    forM_ results $ \result -> do
+        let dataName = name result
+        print dataName
+
+-- Q40-2
+data IntList = EmptyList | Cons Int IntList deriving (Show, Generic)
+
+instance FromJSON IntList
+instance ToJSON IntList
+
+intListExample :: IntList
+intListExample = Cons 1 $ Cons 2 EmptyList
+
 main :: IO ()
-main = print "hi"
+main = do
+    jsonData <- B.readFile "data.json"
+    let noaaResponse = decode jsonData :: Maybe NOAAResponse
+    let noaaResults = results <$> noaaResponse
+    printResults noaaResults
